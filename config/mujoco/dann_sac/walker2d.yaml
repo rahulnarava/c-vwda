@@ -1,0 +1,32 @@
+# DANN-SAC config for Walker2d (state_dim=23, action_dim=6)
+alpha: 0.2
+batch_size: 128
+actor_lr: 0.0003
+critic_lr: 0.0003
+gamma: 0.99
+
+state_dim: 23
+action_dim: 6
+hidden_sizes: 256
+max_action: 1
+
+temperature_opt: False
+
+tau: 0.005
+update_interval: 2
+expl_noise: 0.2
+
+eval_episode: 10
+eval_freq: 10000
+start_steps: 5000
+max_step: 1000000
+tar_env_interact_freq: 10
+
+device: cuda
+save_freq: 5000
+
+# DANN-SAC specific
+zs_dim: 256
+disc_hidden_size: 256
+disc_lr: 0.0003
+grl_lambda: 0.1

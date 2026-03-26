@@ -1,5 +1,11 @@
+import sys
+def debug_log(msg):
+    with open("debug_log.txt", "a") as f:
+        f.write(msg + "\n")
+debug_log("DEBUG: Start imports")
 import numpy as np
 import torch
+debug_log("DEBUG: Torch imported")
 import gym
 import argparse
 import os
@@ -8,18 +14,27 @@ import math
 import time
 import copy
 import yaml
-import json # in case the user want to modify the hyperparameters
-import d4rl # used to make offline environments for source domains
+import json
+import d4rl
+print("DEBUG: D4RL imported"); sys.stderr.write("DEBUG: D4RL imported\n"); sys.stderr.flush()
 import algo.utils as utils
 
 from pathlib                              import Path
 from algo.call_algo                       import call_algo
 from dataset.call_dataset                 import call_tar_dataset
+print("DEBUG: Call algo imported"); sys.stderr.write("DEBUG: Call algo imported\n"); sys.stderr.flush()
 from envs.mujoco.call_mujoco_env          import call_mujoco_env
+print("DEBUG: Mujoco imported"); sys.stdout.flush()
 from envs.adroit.call_adroit_env          import call_adroit_env
+print("DEBUG: Adroit imported"); sys.stdout.flush()
 from envs.antmaze.call_antmaze_env        import call_antmaze_env
+print("DEBUG: Antmaze imported"); sys.stdout.flush()
+from envs.gridworld.call_gridworld_env      import call_gridworld_env
+# skipped others for brevity, focusing on MAIN
+print("DEBUG: Gridworld imported"); sys.stderr.write("DEBUG: Gridworld imported\n"); sys.stderr.flush()
 from envs.infos                           import get_normalized_score
 from tensorboardX                         import SummaryWriter
+print("DEBUG: All imports done"); sys.stderr.write("DEBUG: All imports done\n"); sys.stderr.flush()
 
 
 def eval_policy(policy, env, eval_episodes=10, eval_cnt=None):
@@ -42,7 +57,9 @@ def eval_policy(policy, env, eval_episodes=10, eval_cnt=None):
 
 
 if __name__ == "__main__":
+    debug_log("DEBUG: MAIN EXECUTED")
     parser = argparse.ArgumentParser()
+    # ... (rest commented out for now)
     parser.add_argument("--dir", default="./logs")
     parser.add_argument("--policy", default="SAC", help='policy to use')
     parser.add_argument("--env", default="halfcheetah-friction")
@@ -59,7 +76,9 @@ if __name__ == "__main__":
     parser.add_argument('--max_step', default=int(1e6), type=int)  # the maximum gradient step for off-dynamics rl learning
     parser.add_argument('--params', default=None, help='Hyperparameters for the adopted algorithm, ought to be in JSON format')
     
+    debug_log("DEBUG: Parser args added")
     args = parser.parse_args()
+    debug_log("DEBUG: Args parsed")
 
     # we support different ways of specifying tasks, e.g., hopper-friction, hopper_friction, hopper_morph_torso_easy, hopper-morph-torso-easy
     if '_' in args.env:
@@ -71,14 +90,19 @@ if __name__ == "__main__":
         domain = 'adroit'
     elif 'antmaze' in args.env:
         domain = 'antmaze'
+    elif 'gridworld' in args.env:
+        domain = 'gridworld'
     else:
         raise NotImplementedError
     print(domain)
+    print(f"DEBUG: Domain determined: {domain}")
+    debug_log(f"DEBUG: Domain determined: {domain}")
 
     call_env = {
         'mujoco': call_mujoco_env,
         'adroit': call_adroit_env,
         'antmaze': call_antmaze_env,
+        'gridworld': call_gridworld_env,
     }
 
     # determine referenced environment name
@@ -90,12 +114,18 @@ if __name__ == "__main__":
     elif domain == 'adroit':
         src_env_name = args.env
         src_env_name_config = args.env.split('-')[0]
+    elif domain == 'gridworld':
+        src_env_name = args.env
+        src_env_name_config = args.env
+        ref_env_name = args.env # Update ref_env_name for gridworld
     else:
         src_env_name = args.env.split('-')[0]
         src_env_name_config = src_env_name
     tar_env_name = args.env
 
     # make environments
+    print("DEBUG: Making environments...")
+    debug_log("DEBUG: Making environments...")
     if args.mode == 1 or args.mode == 3:
         if domain == 'antmaze':
             src_env_name = src_env_name.split('-')[0]
@@ -128,6 +158,8 @@ if __name__ == "__main__":
             src_eval_env = copy.deepcopy(src_env)
             src_eval_env.seed(args.seed + 100)
 
+    print("DEBUG: Src envs created")
+    debug_log("DEBUG: Src envs created")
     if args.mode == 2 or args.mode == 3:
         tar_env = None
         tar_env_config = {
@@ -152,8 +184,10 @@ if __name__ == "__main__":
     policy_config_name = args.policy.lower()
 
     # load pre-defined hyperparameter config for training
+    debug_log("DEBUG: Loading config")
     with open(f"{str(Path(__file__).parent.absolute())}/config/{domain}/{policy_config_name}/{src_env_name_config}.yaml", 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
+    debug_log("DEBUG: Config loaded")
     
     if args.params is not None:
         override_params = json.loads(args.params)
@@ -174,6 +208,8 @@ if __name__ == "__main__":
     else:
         outdir = args.dir + '/' + args.policy + '/' + args.env + '-' + str(args.shift_level) + '/r' + str(args.seed)
     writer = SummaryWriter('{}/tb'.format(outdir))
+    print("DEBUG: Writer created")
+    debug_log("DEBUG: Writer created")
     if args.save_model and not os.path.exists("{}/models".format(outdir)):
         os.makedirs("{}/models".format(outdir))
 
@@ -189,10 +225,17 @@ if __name__ == "__main__":
     torch.cuda.manual_seed_all(args.seed)
     random.seed(args.seed)
 
-    # get necessary information from both domains
+    # get necessary information from both domains (Discrete check)
     state_dim = src_eval_env.observation_space.shape[0]
-    action_dim = src_eval_env.action_space.shape[0] 
-    max_action = float(src_eval_env.action_space.high[0])
+    if hasattr(src_eval_env.action_space, 'n'):
+        action_dim = src_eval_env.action_space.n
+        max_action = 1.0 # Not really used for discrete, or used as scaling factor 1
+        is_discrete = True
+    else:
+        action_dim = src_eval_env.action_space.shape[0] 
+        max_action = float(src_eval_env.action_space.high[0])
+        is_discrete = False
+        
     min_action = -max_action
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -213,9 +256,11 @@ if __name__ == "__main__":
         'tar_env_interact_interval': int(args.tar_env_interact_interval),
         'max_step': int(args.max_step),
         'shift_level': shift_level,
+        'discrete_action': is_discrete,
     })
 
     policy = call_algo(args.policy, config, args.mode, device)
+    print("DEBUG: Policy initialized")
     
     ## write logs to record training parameters
     with open(outdir + 'log.txt','w') as f:
@@ -223,8 +268,14 @@ if __name__ == "__main__":
         for item in config.items():
             f.write('\n {}'.format(item))
 
-    src_replay_buffer = utils.ReplayBuffer(state_dim, action_dim, device)
-    tar_replay_buffer = utils.ReplayBuffer(state_dim, action_dim, device)
+    if args.policy == 'c_darc' or args.policy == 'cppo_darc':
+        src_replay_buffer = utils.TrajectoryReplayBuffer(state_dim, action_dim, device)
+        tar_replay_buffer = utils.TrajectoryReplayBuffer(state_dim, action_dim, device)
+    else:
+        src_replay_buffer = utils.ReplayBuffer(state_dim, action_dim, device)
+        src_replay_buffer = utils.ReplayBuffer(state_dim, action_dim, device)
+        tar_replay_buffer = utils.ReplayBuffer(state_dim, action_dim, device)
+    print("DEBUG: Buffers initialized")
 
     # in case that the domain is offline, we directly load its offline data
     if args.mode == 1 or args.mode == 3:
@@ -253,20 +304,32 @@ if __name__ == "__main__":
         tar_episode_reward, tar_episode_timesteps, tar_episode_num = 0, 0, 0
 
         for t in range(int(config['max_step'])):
+            if t % 100 == 0: print(f"DEBUG: Step {t}")
             src_episode_timesteps += 1
 
-            # select action randomly or according to policy, if the policy is deterministic, add exploration noise akin to TD3 implementation
-            src_action = (
-                policy.select_action(np.array(src_state), test=False) + np.random.normal(0, max_action * 0.2, size=action_dim)
-            ).clip(-max_action, max_action)
+            # select action randomly or according to policy
+            # For discrete: no continuous noise; store one-hot in buffer so the
+            # action dimension matches action_dim and Q-net inputs are consistent.
+            if is_discrete:
+                src_action_int = policy.select_action(np.array(src_state), test=False)  # int
+                src_action_buf = np.zeros(action_dim, dtype=np.float32)
+                src_action_buf[src_action_int] = 1.0
+                src_action_env = src_action_int
+            else:
+                src_action_env = (
+                    policy.select_action(np.array(src_state), test=False)
+                    + np.random.normal(0, max_action * 0.2, size=action_dim)
+                ).clip(-max_action, max_action)
+                src_action_buf = src_action_env
 
-            src_next_state, src_reward, src_done, _ = src_env.step(src_action) 
+            src_next_state, src_reward, src_done, src_info = src_env.step(src_action_env)
             src_done_bool = float(src_done) if src_episode_timesteps < src_env._max_episode_steps else 0
+            src_cost = src_info.get('cost', 0.0)
 
             if 'antmaze' in args.env:
                 src_reward -= 1.0
 
-            src_replay_buffer.add(src_state, src_action, src_next_state, src_reward, src_done_bool)
+            src_replay_buffer.add(src_state, src_action_buf, src_next_state, src_reward, src_done_bool, cost=src_cost)
 
             src_state = src_next_state
             src_episode_reward += src_reward
@@ -274,20 +337,29 @@ if __name__ == "__main__":
             # interaction with tar env
             if t % config['tar_env_interact_interval'] == 0:
                 tar_episode_timesteps += 1
-                tar_action = policy.select_action(np.array(tar_state), test=False)
+                if is_discrete:
+                    tar_action_int = policy.select_action(np.array(tar_state), test=False)
+                    tar_action_buf = np.zeros(action_dim, dtype=np.float32)
+                    tar_action_buf[tar_action_int] = 1.0
+                    tar_action_env = tar_action_int
+                else:
+                    tar_action_env = policy.select_action(np.array(tar_state), test=False)
+                    tar_action_buf = tar_action_env
 
-                tar_next_state, tar_reward, tar_done, _ = tar_env.step(tar_action)
+                tar_next_state, tar_reward, tar_done, tar_info = tar_env.step(tar_action_env)
                 tar_done_bool = float(tar_done) if tar_episode_timesteps < src_env._max_episode_steps else 0
+                tar_cost = tar_info.get('cost', 0.0)
 
                 if 'antmaze' in args.env:
                     tar_reward -= 1.0
 
-                tar_replay_buffer.add(tar_state, tar_action, tar_next_state, tar_reward, tar_done_bool)
+                tar_replay_buffer.add(tar_state, tar_action_buf, tar_next_state, tar_reward, tar_done_bool, cost=tar_cost)
 
                 tar_state = tar_next_state
                 tar_episode_reward += tar_reward
 
             policy.train(src_replay_buffer, tar_replay_buffer, config['batch_size'], writer)
+            if t % 100 == 0: print(f"DEBUG: Train call {t} done")
             
             if src_done: 
                 print("Total T: {} Episode Num: {} Episode T: {} Reward: {}".format(t+1, src_episode_num+1, src_episode_timesteps, src_episode_reward))
