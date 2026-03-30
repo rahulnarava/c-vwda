@@ -8,7 +8,7 @@ def call_algo(algo_name, config, mode, device):
     debug_log(f"DEBUG: call_algo start {algo_name}")
     if mode == 0:
         algo_name = algo_name.lower()
-        assert algo_name in ['sac', 'darc', 'c_darc', 'vgdf', 'sac_iw', 'par', 'par_cite', 'cppo_darc', 'dann_sac', 'c_vwda', 'c_vwda_continuous']
+        assert algo_name in ['sac', 'darc', 'c_darc', 'vgdf', 'sac_iw', 'par', 'par_cite', 'cppo_darc', 'dann_sac', 'c_vwda', 'c_vwda_continuous', 'c_vwda_discrete']
         # online online setting
         from online_online.darc import DARC
         from online_online.c_darc import CDARC
@@ -21,6 +21,7 @@ def call_algo(algo_name, config, mode, device):
         from online_online.dann_sac import DANN_SAC
         from online_online.c_vwda import C_VWDA
         from online_online.c_vwda_continuous import C_VWDA_Continuous
+        from online_online.c_vwda_discrete import C_VWDA_Discrete
 
         algo_to_call = {
             'sac': SAC,
@@ -34,6 +35,7 @@ def call_algo(algo_name, config, mode, device):
             'dann_sac': DANN_SAC,
             'c_vwda': C_VWDA,
             'c_vwda_continuous': C_VWDA_Continuous,
+            'c_vwda_discrete': C_VWDA_Discrete,
         }
 
         algo = algo_to_call[algo_name]

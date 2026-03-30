@@ -1,0 +1,36 @@
+alpha: 0.05
+batch_size: 64
+actor_lr: 0.0003
+critic_lr: 0.001
+gamma: 0.99
+
+state_dim: 2
+action_dim: 8
+max_action: 1.0
+discrete_action: True
+hidden_sizes: 64
+
+gaussian_noise_std: 0.1
+
+# C-VWDA discrete specific
+weight_clip: 2.0           # W  – tighter clip for small discrete env
+constraint_budget: 0.99    # ε  – safety budget
+dual_step_size: 0.0003     # η_λ – Lagrange multiplier step size
+warmup_steps: 1000         # shorter warmup for small gridworld env
+dual_warmup_steps: 6000    # delay λ updates until cost critic stabilises
+
+temperature_opt: True      # auto-tune α to avoid entropy dominating sparse reward
+
+tau: 0.005
+update_interval: 1
+expl_noise: 0.1
+
+eval_episode: 5
+eval_freq: 1000
+start_steps: 1000
+max_step: 50000
+tar_env_interact_freq: 10
+
+device: cuda
+
+save_freq: 5000
