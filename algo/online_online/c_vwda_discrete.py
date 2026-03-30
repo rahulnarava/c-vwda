@@ -520,6 +520,7 @@ class C_VWDA_Discrete(object):
         if self.config.get('temperature_opt', False):
             entropy = -(probs.detach() * log_probs.detach()).sum(dim=-1)  # (B,)
             temp_loss = (self.alpha * (entropy - self.target_entropy)).mean()
+            # temp_loss = -(self.log_alpha * (entropy - self.target_entropy).detach()).mean()
             self.temp_optimizer.zero_grad()
             temp_loss.backward()
             self.temp_optimizer.step()

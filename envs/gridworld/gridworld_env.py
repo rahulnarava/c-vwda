@@ -95,10 +95,11 @@ class GridworldEnvironment(gym.Env):
             if nei_s[0] >= 0 and nei_s[0] < self.h and \
                 nei_s[1] >= 0 and nei_s[1] < self.w and \
                 self.reward_mat[nei_s[0]][nei_s[1]] not in \
-                [-np.inf, float('inf'), np.nan, float('nan')]:
+                [-np.inf, float('inf'), np.nan, float('nan')] and \
+                nei_s not in self.unsafe_states:
                 return [(nei_s, 1)]
             else:
-                return [((state[0], state[1]), 1)] # state invalid
+                return [((state[0], state[1]), 1)] # blocked by wall or grid boundary
         else:
             # Simplified transition logic from original file
             # Assuming deterministic for now based on thesis usage or 1.0 prob

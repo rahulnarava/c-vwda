@@ -1,8 +1,8 @@
-alpha: 0.05
+alpha: 0.2
 batch_size: 64
 actor_lr: 0.0003
 critic_lr: 0.001
-gamma: 0.99
+gamma: 1.0
 
 state_dim: 2
 action_dim: 8
@@ -16,10 +16,12 @@ gaussian_noise_std: 0.1
 weight_clip: 2.0           # W  – tighter clip for small discrete env
 constraint_budget: 0.99    # ε  – safety budget
 dual_step_size: 0.0003     # η_λ – Lagrange multiplier step size
+# constraint_budget: 5.0     # ε  – natural J_c ≈ 3.4 even with aligned domains; budget must be above this
+# dual_step_size: 0.0001     # η_λ – slower λ updates to prevent runaway
 warmup_steps: 1000         # shorter warmup for small gridworld env
 dual_warmup_steps: 6000    # delay λ updates until cost critic stabilises
 
-temperature_opt: True      # auto-tune α to avoid entropy dominating sparse reward
+temperature_opt: False      # auto-tune α to avoid entropy dominating sparse reward
 
 tau: 0.005
 update_interval: 1
