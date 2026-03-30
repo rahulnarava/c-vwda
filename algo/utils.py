@@ -10,6 +10,7 @@ from torch.nn import functional as F
 from torch.distributions import Normal, kl_divergence
 
 
+
 class ReplayBuffer(object):
     def __init__(self, state_dim, action_dim, device, max_size=int(1e6)):
         self.max_size = max_size
@@ -21,15 +22,17 @@ class ReplayBuffer(object):
         self.next_state = np.zeros((max_size, state_dim))
         self.reward = np.zeros((max_size, 1))
         self.not_done = np.zeros((max_size, 1))
+        self.cost = np.zeros((max_size, 1)) # Added cost
 
         self.device = device
 
-    def add(self, state, action, next_state, reward, done):
+    def add(self, state, action, next_state, reward, done, cost=0.0):
         self.state[self.ptr] = state
         self.action[self.ptr] = action
         self.next_state[self.ptr] = next_state
         self.reward[self.ptr] = reward
         self.not_done[self.ptr] = 1. - done
+        self.cost[self.ptr] = cost
 
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
@@ -43,7 +46,8 @@ class ReplayBuffer(object):
             torch.FloatTensor(self.action[ind]).to(self.device),
             torch.FloatTensor(self.next_state[ind]).to(self.device),
             torch.FloatTensor(self.reward[ind]).to(self.device),
-            torch.FloatTensor(self.not_done[ind]).to(self.device)
+            torch.FloatTensor(self.not_done[ind]).to(self.device),
+            torch.FloatTensor(self.cost[ind]).to(self.device)
         )
     
     def convert_D4RL(self, dataset):
@@ -53,9 +57,54 @@ class ReplayBuffer(object):
         self.reward = dataset['rewards'].reshape(-1,1)
         self.not_done = 1. - dataset['terminals'].reshape(-1,1)
         self.size = self.state.shape[0]
+        # D4RL datasets might not have cost, initialize to 0
+        self.cost = np.zeros((self.size, 1))
+
+
+class TrajectoryReplayBuffer(object):
+    def __init__(self, state_dim, action_dim, device, max_size=int(1e6)):
+        self.max_size = max_size
+        self.device = device
+        self.trajectories = [] # List of list of transitions: [(s, a, ns, r, done, cost), ...]
+        self.max_trajectories = 10000 # Limit number of trajectories
+        self.current_trajectory = []
+
+    def add(self, state, action, next_state, reward, done, cost=0.0):
+        self.current_trajectory.append((state, action, next_state, reward, done, cost))
+        if done:
+            if len(self.trajectories) >= self.max_trajectories:
+                self.trajectories.pop(0) # FIFO
+            self.trajectories.append(self.current_trajectory)
+            self.current_trajectory = []
+            
+    def sample_trajectories(self, batch_size):
+        # Sample random trajectories
+        if len(self.trajectories) == 0:
+            return []
         
+        indices = np.random.choice(len(self.trajectories), batch_size, replace=True)
+        sampled_trajectories = [self.trajectories[i] for i in indices]
+        
+        # Convert to tensors
+        tensor_trajectories = []
+        for traj in sampled_trajectories:
+            states = torch.FloatTensor(np.array([t[0] for t in traj])).to(self.device)
+            actions = torch.FloatTensor(np.array([t[1] for t in traj])).to(self.device)
+            next_states = torch.FloatTensor(np.array([t[2] for t in traj])).to(self.device)
+            rewards = torch.FloatTensor(np.array([t[3] for t in traj])).unsqueeze(1).to(self.device)
+            dones = torch.FloatTensor(np.array([t[4] for t in traj])).unsqueeze(1).to(self.device)
+            costs = torch.FloatTensor(np.array([t[5] for t in traj])).unsqueeze(1).to(self.device)
+            tensor_trajectories.append((states, actions, next_states, rewards, dones, costs))
+            
+        return tensor_trajectories
+
+    @property
+    def size(self):
+        return len(self.trajectories)
+
 
 class MLP(nn.Module):
+
 
     def __init__(
         self,

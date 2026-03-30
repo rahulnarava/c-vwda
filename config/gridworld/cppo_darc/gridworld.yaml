@@ -1,0 +1,39 @@
+alpha: 0.2
+batch_size: 64
+actor_lr: 0.0003
+critic_lr: 0.001
+gamma: 0.99
+
+state_dim: 2
+action_dim: 8
+max_action: 1.0
+discrete_action: True
+hidden_sizes: 64
+
+# PPO Parameters
+clip_ratio: 0.2
+ppo_epochs: 10
+value_coef: 0.5
+entropy_coef: 0.01
+gae_lambda: 0.95
+max_grad_norm: 0.5
+
+# CDARC Parameters
+penalty_coefficient: 1.0
+constraint_limit: 0.99 # Strict constraint as per thesis/user preference
+
+# Training Parameters
+eval_episode: 5
+eval_freq: 1000
+start_steps: 1000
+max_step: 50000
+tar_env_interact_freq: 10
+# Note: tar_env_interact_interval is the arg name in train.py, but config usually uses update_interval or similar?
+# train.py uses args.tar_env_interact_interval to override or set config['tar_env_interact_interval']
+# I'll just set defaults here.
+
+update_interval: 1
+expl_noise: 0.1
+
+device: cuda
+save_freq: 5000

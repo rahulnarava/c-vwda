@@ -1,0 +1,49 @@
+alpha: 0.2
+batch_size: 64
+actor_lr: 0.0005
+critic_lr: 0.0005
+gamma: 0.99
+
+state_dim: 2
+# action_dim: 1 # Discrete action space actually?
+# Replaced with correct value below (8)
+
+# RE-PLANNING:
+# If DARC/SAC implementation is for continuous actions (Actor outputs mu/std), it won't work out-of-the-box for Discrete Gridworld.
+# I need to check if existing Policy supports discrete or if I need to adapt.
+# The user asked to run c_darc on this environment.
+# Option 1: Adapt Gridworld to accept continuous actions (discretize inside env).
+# Option 2: Adapt Policy to be Discrete.
+
+# Let's check `algo/online_online/c_darc.py` again.
+# It uses `Normal` distribution and `TanhTransform`. This IS for continuous.
+
+# I will adapt Env to accept continuous action and discretize it.
+# 9 actions: 0..8.
+# Box(-1, 1) -> map to 0..8?
+# Or simple discretization.
+
+action_dim: 8
+max_action: 1.0
+discrete_action: True
+hidden_sizes: 64
+
+gaussian_noise_std: 0.1
+penalty_coefficient: 1.0
+constraint_limit: 0.99
+
+temperature_opt: False
+
+tau: 0.005
+update_interval: 1
+expl_noise: 0.1
+
+eval_episode: 5
+eval_freq: 1000
+start_steps: 1000
+max_step: 50000
+tar_env_interact_freq: 10
+
+device: cuda
+
+save_freq: 5000

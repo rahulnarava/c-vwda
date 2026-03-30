@@ -1,26 +1,45 @@
 # import all algorithms this benchmark implement
 
+def debug_log(msg):
+    with open("debug_log.txt", "a") as f:
+        f.write(msg + "\n")
+
 def call_algo(algo_name, config, mode, device):
+    debug_log(f"DEBUG: call_algo start {algo_name}")
     if mode == 0:
         algo_name = algo_name.lower()
-        assert algo_name in ['sac', 'darc', 'vgdf', 'sac_iw', 'par']
+        assert algo_name in ['sac', 'darc', 'c_darc', 'vgdf', 'sac_iw', 'par', 'par_cite', 'cppo_darc', 'dann_sac', 'c_vwda', 'c_vwda_continuous']
         # online online setting
         from online_online.darc import DARC
+        from online_online.c_darc import CDARC
         from online_online.sac import SAC
         from online_online.vgdf import VGDF
         from online_online.sac_iw import SAC_IW
         from online_online.par import PAR
+        from online_online.par_cite import PAR_CITE
+        from online_online.cppo_darc import CPPO_DARC
+        from online_online.dann_sac import DANN_SAC
+        from online_online.c_vwda import C_VWDA
+        from online_online.c_vwda_continuous import C_VWDA_Continuous
 
         algo_to_call = {
             'sac': SAC,
             'darc': DARC,
+            'c_darc': CDARC,
             'vgdf': VGDF,
             'sac_iw': SAC_IW,
             'par': PAR,
+            'par_cite': PAR_CITE,
+            'cppo_darc': CPPO_DARC,
+            'dann_sac': DANN_SAC,
+            'c_vwda': C_VWDA,
+            'c_vwda_continuous': C_VWDA_Continuous,
         }
 
         algo = algo_to_call[algo_name]
+        debug_log(f"DEBUG: Instantiating {algo_name}")
         policy = algo(config, device)
+        debug_log(f"DEBUG: Instantiated {algo_name}")
 
     elif mode == 1:
         algo_name = algo_name.lower()
